@@ -7,6 +7,7 @@ import {
   updateProgress,
   importFromClassroom,
 } from '../api/client';
+import { createGoogleCalendarEvents } from '../api/googleCalendar';
 import type { Task } from '../types';
 
 // ─── small helpers ────────────────────────────────────────────
@@ -59,6 +60,7 @@ export const DebugPanel: React.FC = () => {
 
   const [log, setLog] = useState<string[]>([]);
   const [apiLoading, setApiLoading] = useState(false);
+  const [calendarLoading, setCalendarLoading] = useState(false);
   const [classroomInput, setClassroomInput] = useState(
     'Linear Algebra Revision, 2026-08-05\nOOP Assignment, 2026-08-10\nNetworks Quiz, 2026-08-12'
   );

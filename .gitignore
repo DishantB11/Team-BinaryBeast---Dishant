@@ -1,0 +1,21 @@
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Environment files (DO NOT COMMIT CLIENT SECRETS)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Build outputs & TypeScript caches
+dist/
+build/
+*.tsbuildinfo
+*.d.ts
+*.js
+
+# OS & Editor files
+.DS_Store
+.vscode/
+.idea/
