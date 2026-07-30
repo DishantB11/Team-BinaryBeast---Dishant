@@ -14,13 +14,20 @@ export const CalendarView: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
 
+  const [parsedTaskInfo, setParsedTaskInfo] = useState<{
+    subject: string;
+    topic: string;
+    priority: string;
+    dueDate: string;
+    estTime: string;
+  } | null>(null);
+
   // Convert tasks to FullCalendar event format
   const events = tasks.map((task) => ({
     id: task.id,
     title: `[${task.subject}] ${task.title}`,
     start: task.dueDate,
     allDay: true,
-    // Custom color styling matching requirements: yellow for priority 1, gray border/bg for others
     backgroundColor: task.priority === 1 ? '#fbbf24' : '#2d2d2d',
     borderColor: task.priority === 1 ? '#fbbf24' : '#3d3d3d',
     textColor: task.priority === 1 ? '#000000' : '#ffffff',
@@ -34,12 +41,11 @@ export const CalendarView: React.FC = () => {
     const taskId = event.id;
 
     setIsUpdating(true);
+    setParsedTaskInfo(null);
     setReplanningLog(`Recalculating plan for target: "${event.title}"...`);
 
     try {
       const response = await rescheduleTask(taskId, newDateStr, tasks);
-      
-      // Update state with newly planned conflict-free task list
       setTasks(response.tasks);
       setReplanningLog(response.reasoning);
     } catch (error: any) {
@@ -50,10 +56,23 @@ export const CalendarView: React.FC = () => {
     }
   };
 
-  // Handle Event Click to show details in AI Reasoning panel
+  // Handle Event Click to show formatted details in AI Reasoning panel
   const handleEventClick = (clickInfo: any) => {
     const task = clickInfo.event.extendedProps;
-    setReplanningLog(`Task Details — "${task.title}" (${task.subject}) | Type: ${task.type} | Priority: ${task.priority === 1 ? 'High' : task.priority === 2 ? 'Medium' : 'Low'} | Due Date: ${task.dueDate} | Estimated: ${task.estimatedHours || task.duration} hours.`);
+    const priorityLabel = task.priority === 1 ? 'High' : task.priority === 2 ? 'Medium' : 'Low';
+    const estTime = task.estimatedHours || task.duration || 2;
+
+    setParsedTaskInfo({
+      subject: task.subject || 'N/A',
+      topic: task.title || 'N/A',
+      priority: priorityLabel,
+      dueDate: task.dueDate || 'N/A',
+      estTime: `${estTime} hrs`,
+    });
+
+    setReplanningLog(
+      `1) Subject: ${task.subject || 'N/A'} | 2) Topic: ${task.title || 'N/A'} | 3) Priority: ${priorityLabel} | 4) Due Date: ${task.dueDate || 'N/A'} | 5) Estimated Time: ${estTime} hrs`
+    );
   };
 
   // Sync tasks directly to/from user's Google Calendar via OAuth 2.0
@@ -111,14 +130,40 @@ export const CalendarView: React.FC = () => {
         </button>
       </div>
 
-      {/* AI Reasoner panel */}
+      {/* AI Reasoner panel - Clean Minimal Metadata Grid */}
       {replanningLog && (
-        <div className="bg-[#2d2d2d] border border-[#fbbf24]/30 rounded-lg p-4 flex gap-3 items-start animate-fadeIn">
-          <Sparkles className="w-5 h-5 text-[#fbbf24] shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <span className="text-xs font-semibold text-[#fbbf24] tracking-wider uppercase block">AI Reasoning Engine</span>
-            <p className="text-sm text-gray-200 leading-relaxed font-sans">{replanningLog}</p>
+        <div className="bg-[#1e1e1e] border border-[#3d3d3d] rounded-lg p-4 transition-all duration-200 animate-fadeIn">
+          <div className="flex items-center gap-2 mb-3 border-b border-[#2d2d2d] pb-2">
+            <Sparkles className="w-4 h-4 text-[#fbbf24] shrink-0" />
+            <span className="text-xs font-semibold text-[#fbbf24] tracking-wider uppercase">AI Reasoning Engine</span>
           </div>
+
+          {parsedTaskInfo ? (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d]">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Subject</div>
+                <div className="font-bold text-white truncate mt-0.5">{parsedTaskInfo.subject}</div>
+              </div>
+              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d] col-span-2 md:col-span-1">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Topic</div>
+                <div className="font-bold text-white truncate mt-0.5" title={parsedTaskInfo.topic}>{parsedTaskInfo.topic}</div>
+              </div>
+              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d]">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Priority</div>
+                <div className="font-bold text-[#fbbf24] mt-0.5">{parsedTaskInfo.priority}</div>
+              </div>
+              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d]">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Due Date</div>
+                <div className="font-bold text-white mt-0.5">{parsedTaskInfo.dueDate}</div>
+              </div>
+              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d]">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Estimated Time</div>
+                <div className="font-bold text-white mt-0.5">{parsedTaskInfo.estTime}</div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-300 leading-relaxed font-mono">{replanningLog}</p>
+          )}
         </div>
       )}
 
@@ -141,6 +186,26 @@ export const CalendarView: React.FC = () => {
           droppable={true}
           eventDrop={handleEventDrop}
           eventClick={handleEventClick}
+          eventContent={(eventInfo) => {
+            const task = eventInfo.event.extendedProps;
+            const isHighPriority = task.priority === 1;
+
+            return (
+              <div
+                className="w-full h-[24px] px-2 flex items-center text-xs rounded border transition-all duration-200 ease-out cursor-pointer overflow-hidden transform hover:translate-y-1 hover:brightness-125 hover:shadow-md"
+                style={{
+                  backgroundColor: isHighPriority ? '#fbbf24' : '#2d2d2d',
+                  color: isHighPriority ? '#000000' : '#ffffff',
+                  borderColor: isHighPriority ? '#f59e0b' : '#4d4d4d',
+                }}
+                title={eventInfo.event.title}
+              >
+                <span className="truncate font-medium text-[11px] leading-none">
+                  {eventInfo.event.title}
+                </span>
+              </div>
+            );
+          }}
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',

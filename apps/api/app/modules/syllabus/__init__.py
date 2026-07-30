@@ -1,0 +1,1 @@
+"""Syllabus ingestion module."""
