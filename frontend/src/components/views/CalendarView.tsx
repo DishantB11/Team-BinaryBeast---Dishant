@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin, { EventDragStopArg } from '@fullcalendar/interaction';
+import interactionPlugin from '@fullcalendar/interaction';
 import { useStore } from '../../store/useStore';
 import { rescheduleTask } from '../../api/client';
-import { Sparkles, RefreshCw } from 'lucide-react';
+import { createGoogleCalendarEvents, fetchGoogleCalendarEvents } from '../../api/googleCalendar';
+import { Sparkles, RefreshCw, Calendar as CalendarIcon } from 'lucide-react';
 
 export const CalendarView: React.FC = () => {
   const { tasks, setTasks } = useStore();
   const [replanningLog, setReplanningLog] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
 
   // Convert tasks to FullCalendar event format
   const events = tasks.map((task) => ({
@@ -48,6 +50,49 @@ export const CalendarView: React.FC = () => {
     }
   };
 
+  // Handle Event Click to show details in AI Reasoning panel
+  const handleEventClick = (clickInfo: any) => {
+    const task = clickInfo.event.extendedProps;
+    setReplanningLog(`Task Details — "${task.title}" (${task.subject}) | Type: ${task.type} | Priority: ${task.priority === 1 ? 'High' : task.priority === 2 ? 'Medium' : 'Low'} | Due Date: ${task.dueDate} | Estimated: ${task.estimatedHours || task.duration} hours.`);
+  };
+
+  // Sync tasks directly to/from user's Google Calendar via OAuth 2.0
+  const handleSyncGoogleCalendar = async () => {
+    setIsSyncingGoogle(true);
+    setReplanningLog('Connecting to Google Calendar & fetching remote events...');
+
+    try {
+      // 1. Fetch remote events from Google Calendar
+      const remoteTasks = await fetchGoogleCalendarEvents();
+      
+      // Merge remote events into existing tasks store avoiding duplicates
+      const existingTaskTitles = new Set(tasks.map((t) => `${t.dueDate}:${t.title.toLowerCase()}`));
+      const newImportedTasks = remoteTasks.filter(
+        (rt) => !existingTaskTitles.has(`${rt.dueDate}:${rt.title.toLowerCase()}`) && !tasks.some((t) => t.id === rt.id)
+      );
+
+      const mergedTasks = [...tasks, ...newImportedTasks];
+
+      // 2. Export unsynced local study sessions to Google Calendar
+      const localTasksToExport = tasks.filter((t) => !t.id.startsWith('gcal-'));
+      let exportedCount = 0;
+      if (localTasksToExport.length > 0) {
+        const synced = await createGoogleCalendarEvents(localTasksToExport);
+        exportedCount = synced.length;
+      }
+
+      setTasks(mergedTasks);
+      setReplanningLog(
+        `✅ Bidirectional Sync Complete! Imported ${newImportedTasks.length} Google Calendar event(s) into your planner & exported ${exportedCount} study session(s) to Google Calendar.`
+      );
+    } catch (error: any) {
+      console.error('Google Calendar sync error:', error);
+      setReplanningLog(`⚠️ Google Calendar sync: ${error.message || 'Permission requested or failed.'}`);
+    } finally {
+      setIsSyncingGoogle(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -55,6 +100,15 @@ export const CalendarView: React.FC = () => {
           <h1 className="text-2xl font-bold text-white tracking-tight">Interactive Calendar</h1>
           <p className="text-sm text-[#a0a0a0]">Drag and drop scheduled sessions. AI conflicts resolve automatically.</p>
         </div>
+
+        <button
+          onClick={handleSyncGoogleCalendar}
+          disabled={isSyncingGoogle}
+          className="flex items-center gap-2 bg-[#2d2d2d] border border-[#3d3d3d] hover:border-[#fbbf24] text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm shrink-0 disabled:opacity-50 cursor-pointer"
+        >
+          <CalendarIcon className={`w-4 h-4 text-[#fbbf24] ${isSyncingGoogle ? 'animate-spin' : ''}`} />
+          <span>{isSyncingGoogle ? 'Syncing...' : 'Sync to Google Calendar'}</span>
+        </button>
       </div>
 
       {/* AI Reasoner panel */}
@@ -86,6 +140,7 @@ export const CalendarView: React.FC = () => {
           editable={true}
           droppable={true}
           eventDrop={handleEventDrop}
+          eventClick={handleEventClick}
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
@@ -97,3 +152,4 @@ export const CalendarView: React.FC = () => {
     </div>
   );
 };
+
