@@ -12,6 +12,11 @@ interface AppState {
   selectedTaskId: string | null;
   heatmapData: { date: string; count: number }[];
 
+  // --- Synced Pomodoro Timer State ---
+  pomodoroSeconds: number;
+  isPomodoroRunning: boolean;
+  activePomodoroTaskId: string | null;
+
   // --- Actions ---
   setTasks: (tasks: Task[]) => void;
   addTask: (task: Task) => void;
@@ -25,7 +30,15 @@ interface AppState {
   setSelectedTask: (id: string | null) => void;
   clearAll: () => void;
 
-  // --- Computed (selectors in zustand v4+) ---
+  // --- Pomodoro Actions ---
+  setPomodoroSeconds: (seconds: number) => void;
+  setIsPomodoroRunning: (running: boolean) => void;
+  togglePomodoroTimer: () => void;
+  resetPomodoroTimer: () => void;
+  setActivePomodoroTaskId: (id: string | null) => void;
+  tickPomodoro: () => void;
+
+  // --- Computed ---
   getTodayTasks: () => Task[];
   getUpcomingExams: () => Task[];
   getTotalStudyHours: () => number;
@@ -122,7 +135,7 @@ const generateMockTasks = (): Task[] => {
       dueDate: formatDate(4),
       duration: 2,
       priority: 1,
-      isCompleted: true, // ✅ Already completed
+      isCompleted: true,
       estimatedHours: 3,
       module: 'Module 1',
     },
@@ -147,7 +160,6 @@ const defaultPreferences: UserPreferences = {
   goal: 'Mastery',
 };
 
-// 🏪 THE ZUSTAND STORE
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -173,6 +185,11 @@ export const useStore = create<AppState>()(
         { date: '2026-07-26', count: 1 },
       ],
 
+      // Pomodoro Initial State
+      pomodoroSeconds: 25 * 60,
+      isPomodoroRunning: false,
+      activePomodoroTaskId: null,
+
       // --- Actions ---
       setTasks: (tasks) => set({ tasks }),
       
@@ -188,7 +205,6 @@ export const useStore = create<AppState>()(
           const updatedTasks = state.tasks.map((t) =>
             t.id === id ? { ...t, isCompleted: !t.isCompleted } : t
           );
-          // Also update the heatmap when a task is completed
           const task = updatedTasks.find((t) => t.id === id);
           if (task && task.isCompleted) {
             const today = new Date().toISOString().split('T')[0];
@@ -231,7 +247,30 @@ export const useStore = create<AppState>()(
           selectedTaskId: null,
         }),
 
-      // --- Selectors (Computed Properties) ---
+      // --- Pomodoro Actions ---
+      setPomodoroSeconds: (pomodoroSeconds) => set({ pomodoroSeconds }),
+      setIsPomodoroRunning: (isPomodoroRunning) => set({ isPomodoroRunning }),
+      togglePomodoroTimer: () => set((state) => ({ isPomodoroRunning: !state.isPomodoroRunning })),
+      resetPomodoroTimer: () => set({ pomodoroSeconds: 25 * 60, isPomodoroRunning: false }),
+      setActivePomodoroTaskId: (activePomodoroTaskId) => set({ activePomodoroTaskId }),
+      tickPomodoro: () =>
+        set((state) => {
+          if (!state.isPomodoroRunning) return state;
+          if (state.pomodoroSeconds > 1) {
+            return { pomodoroSeconds: state.pomodoroSeconds - 1 };
+          } else {
+            // Reached 0
+            if (state.activePomodoroTaskId) {
+              const updatedTasks = state.tasks.map((t) =>
+                t.id === state.activePomodoroTaskId ? { ...t, isCompleted: true } : t
+              );
+              return { pomodoroSeconds: 0, isPomodoroRunning: false, tasks: updatedTasks };
+            }
+            return { pomodoroSeconds: 0, isPomodoroRunning: false };
+          }
+        }),
+
+      // --- Selectors ---
       getTodayTasks: () => {
         const today = new Date().toISOString().split('T')[0];
         return get().tasks.filter((t) => t.dueDate === today && !t.isCompleted);
@@ -251,13 +290,13 @@ export const useStore = create<AppState>()(
       },
     }),
     {
-      name: 'study-planner-storage', // Key in localStorage
+      name: 'study-planner-storage',
       partialize: (state) => ({
         tasks: state.tasks,
         subjects: state.subjects,
         preferences: state.preferences,
         heatmapData: state.heatmapData,
-      }), // Only persist these fields (don't persist isLoading/error)
+      }),
     }
   )
 );

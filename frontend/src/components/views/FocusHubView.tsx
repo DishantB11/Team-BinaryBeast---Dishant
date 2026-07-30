@@ -5,8 +5,18 @@ import { Check, Play, Pause, RotateCcw, Award, ChevronLeft, ChevronRight, Plus }
 import Confetti from 'react-confetti';
 
 export const FocusHubView: React.FC = () => {
-  const { tasks, toggleTaskComplete, addTask } = useStore();
-  const [activeTask, setActiveTask] = useState<string | null>(null);
+  const { 
+    tasks, 
+    toggleTaskComplete, 
+    addTask,
+    pomodoroSeconds,
+    isPomodoroRunning,
+    activePomodoroTaskId,
+    togglePomodoroTimer,
+    resetPomodoroTimer,
+    setPomodoroSeconds,
+    setActivePomodoroTaskId
+  } = useStore();
 
   // Date Navigation State
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -16,9 +26,6 @@ export const FocusHubView: React.FC = () => {
   const [newSubject, setNewSubject] = useState('General');
   const [newDuration, setNewDuration] = useState('1');
 
-  // Pomodoro State
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isRunning, setIsRunning] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
   // Format date helper: YYYY-MM-DD
@@ -69,27 +76,17 @@ export const FocusHubView: React.FC = () => {
     setNewTitle('');
   };
 
-  // Pomodoro tick
+  // Handle completion confetti & notifications on timer completion
   useEffect(() => {
-    let timer: any;
-    if (isRunning && timeLeft > 0) {
-      timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isRunning) {
-      setIsRunning(false);
+    if (pomodoroSeconds === 0) {
       triggerDesktopNotification();
-      
-      // Trigger confetti and update stats if an active task was completed
-      if (activeTask) {
-        toggleTaskComplete(activeTask);
-        updateProgress(activeTask, true);
+      if (activePomodoroTaskId) {
+        updateProgress(activePomodoroTaskId, true);
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 5000);
       }
     }
-    return () => clearInterval(timer);
-  }, [isRunning, timeLeft, activeTask]);
+  }, [pomodoroSeconds, activePomodoroTaskId]);
 
   // Request browser Notification API permission
   useEffect(() => {
@@ -108,18 +105,8 @@ export const FocusHubView: React.FC = () => {
   };
 
   const handleSelectTask = (taskId: string) => {
-    setActiveTask(taskId);
-    setTimeLeft(25 * 60); // Reset timer for the newly focused task
-    setIsRunning(false);
-  };
-
-  const toggleTimer = () => {
-    setIsRunning(!isRunning);
-  };
-
-  const resetTimer = () => {
-    setTimeLeft(25 * 60);
-    setIsRunning(false);
+    setActivePomodoroTaskId(taskId);
+    setPomodoroSeconds(25 * 60); // Reset timer for the newly focused task
   };
 
   const formatTime = (seconds: number) => {
@@ -129,7 +116,7 @@ export const FocusHubView: React.FC = () => {
   };
 
   // Find currently focused task details
-  const currentFocusedTask = tasks.find(t => t.id === activeTask);
+  const currentFocusedTask = tasks.find(t => t.id === activePomodoroTaskId);
 
   return (
     <div className="space-y-6 relative">
@@ -177,7 +164,7 @@ export const FocusHubView: React.FC = () => {
             ) : (
               <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                 {filteredTasks.map((task) => {
-                  const isActive = activeTask === task.id;
+                  const isActive = activePomodoroTaskId === task.id;
                   return (
                     <div 
                       key={task.id} 
@@ -269,7 +256,7 @@ export const FocusHubView: React.FC = () => {
           </form>
         </div>
 
-        {/* Right 1/3: Pomodoro Focus Timer */}
+        {/* Right 1/3: Pomodoro Focus Timer (Synced with Store) */}
         <div className="bg-[#2d2d2d] border border-[#3d3d3d] rounded-lg p-5 flex flex-col justify-between">
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-white tracking-tight uppercase text-center border-b border-[#3d3d3d] pb-3">
@@ -286,7 +273,7 @@ export const FocusHubView: React.FC = () => {
             {/* Giant Timer Display */}
             <div className="text-center py-6">
               <span className="text-5xl font-bold font-mono tracking-wider text-white">
-                {formatTime(timeLeft)}
+                {formatTime(pomodoroSeconds)}
               </span>
             </div>
           </div>
@@ -294,10 +281,10 @@ export const FocusHubView: React.FC = () => {
           <div className="space-y-4 mt-4">
             <div className="flex gap-3">
               <button
-                onClick={toggleTimer}
+                onClick={() => togglePomodoroTimer()}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md font-semibold text-sm transition-all bg-[#fbbf24] text-black hover:opacity-90"
               >
-                {isRunning ? (
+                {isPomodoroRunning ? (
                   <>
                     <Pause className="w-4 h-4" />
                     <span>Pause</span>
@@ -310,7 +297,7 @@ export const FocusHubView: React.FC = () => {
                 )}
               </button>
               <button
-                onClick={resetTimer}
+                onClick={() => resetPomodoroTimer()}
                 className="px-3.5 py-2.5 rounded-md border border-[#3d3d3d] bg-[#1e1e1e] text-white hover:border-[#fbbf24] transition-all"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -318,7 +305,7 @@ export const FocusHubView: React.FC = () => {
             </div>
             
             <p className="text-[11px] text-[#6b6b6b] text-center leading-relaxed">
-              Completing this session automatically marks your selected target as complete.
+              Synced live with your floating widget across all pages.
             </p>
           </div>
         </div>
@@ -326,4 +313,5 @@ export const FocusHubView: React.FC = () => {
     </div>
   );
 };
+
 export default FocusHubView;
