@@ -12,7 +12,7 @@ const GIS_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
 const CLASSROOM_API_BASE = 'https://classroom.googleapis.com/v1';
 
 let gisScriptPromise: Promise<void> | null = null;
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = localStorage.getItem('google_access_token');
 
 const getGoogleClientId = () => import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
@@ -42,6 +42,7 @@ const loadGoogleIdentityServices = (): Promise<void> => {
 
 export const resetClassroomAccessToken = () => {
   cachedAccessToken = null;
+  localStorage.removeItem('google_access_token');
 };
 
 export const requestClassroomAccess = async (forcePrompt = false): Promise<string> => {
@@ -65,6 +66,7 @@ export const requestClassroomAccess = async (forcePrompt = false): Promise<strin
         }
 
         cachedAccessToken = response.access_token;
+        localStorage.setItem('google_access_token', response.access_token);
         resolve(response.access_token);
       },
     });
@@ -83,17 +85,61 @@ export const requestClassroomAccess = async (forcePrompt = false): Promise<strin
 };
 
 /**
+ * Helper to resolve the actual Drive file object from various API response shapes.
+ * Google Classroom API wraps drive files differently depending on the endpoint:
+ *   - courseWorkMaterials: { driveFile: { driveFile: { id, title, alternateLink, thumbnailUrl }, shareMode } }
+ *   - courseWork:          { driveFile: { driveFile: { id, title, alternateLink, thumbnailUrl }, shareMode } }
+ *   - announcements:      { driveFile: { driveFile: { id, title, alternateLink }, shareMode } }
+ * This helper normalises all shapes into a single flat file object.
+ */
+const resolveDriveFile = (mat: any): { title: string; url: string; mime: string; thumbnailUrl?: string } | null => {
+  // SharedDriveFile wrapper: mat.driveFile.driveFile holds the real DriveFile resource
+  const innerDrive = mat?.driveFile?.driveFile;
+  if (innerDrive && (innerDrive.id || innerDrive.title || innerDrive.alternateLink)) {
+    return {
+      title: innerDrive.title || innerDrive.name || 'Attached Document',
+      url: innerDrive.alternateLink || innerDrive.webViewLink || '#',
+      mime: (innerDrive.mimeType || '').toLowerCase(),
+      thumbnailUrl: innerDrive.thumbnailUrl,
+    };
+  }
+
+  // Flat driveFile (some older / non-standard responses)
+  const flatDrive = mat?.driveFile;
+  if (flatDrive && (flatDrive.id || flatDrive.title || flatDrive.alternateLink) && !flatDrive.driveFile) {
+    return {
+      title: flatDrive.title || flatDrive.name || 'Attached Document',
+      url: flatDrive.alternateLink || flatDrive.webViewLink || '#',
+      mime: (flatDrive.mimeType || '').toLowerCase(),
+      thumbnailUrl: flatDrive.thumbnailUrl,
+    };
+  }
+
+  // mat.file fallback
+  const fileObj = mat?.file;
+  if (fileObj && (fileObj.id || fileObj.title || fileObj.alternateLink)) {
+    return {
+      title: fileObj.title || fileObj.name || 'Attached Document',
+      url: fileObj.alternateLink || fileObj.webViewLink || fileObj.url || '#',
+      mime: (fileObj.mimeType || '').toLowerCase(),
+      thumbnailUrl: fileObj.thumbnailUrl,
+    };
+  }
+
+  return null;
+};
+
+/**
  * Helper to determine attachment file type (PDF, PPT, Doc, Link, Video)
  */
 const parseAttachment = (mat: any): ClassroomAttachment | null => {
-  const fileObj = mat.driveFile?.driveFile || mat.driveFile || mat.file || mat;
-  if (fileObj) {
-    const title = fileObj.title || fileObj.name || mat.title || 'Attached Document';
-    const url = fileObj.alternateLink || fileObj.url || fileObj.webViewLink || mat.alternateLink || '#';
-    const mime = (fileObj.mimeType || '').toLowerCase();
+  // --- Drive file attachments ---
+  const driveFile = resolveDriveFile(mat);
+  if (driveFile) {
+    const { title, url, mime, thumbnailUrl } = driveFile;
     const lowerTitle = title.toLowerCase();
 
-    let type: ClassroomAttachment['type'] = 'pdf';
+    let type: ClassroomAttachment['type'] = 'pdf'; // default
 
     if (
       lowerTitle.endsWith('.ppt') ||
@@ -126,19 +172,10 @@ const parseAttachment = (mat: any): ClassroomAttachment | null => {
       type = 'pdf';
     }
 
-    // Fallback: if no specific mimeType matched, treat generic files as 'pdf' or 'doc' so they are displayed
-    if (!type) {
-      type = 'pdf';
-    }
-
-    return {
-      title,
-      url,
-      type,
-      thumbnailUrl: fileObj.thumbnailUrl,
-    };
+    return { title, url, type, thumbnailUrl };
   }
 
+  // --- Web link attachments ---
   if (mat.link) {
     const title = mat.link.title || mat.link.url || 'Web Link';
     const url = mat.link.url || '#';
@@ -159,6 +196,7 @@ const parseAttachment = (mat: any): ClassroomAttachment | null => {
     };
   }
 
+  // --- YouTube video attachments ---
   if (mat.youtubeVideo) {
     return {
       title: mat.youtubeVideo.title || 'YouTube Video',
@@ -168,6 +206,7 @@ const parseAttachment = (mat: any): ClassroomAttachment | null => {
     };
   }
 
+  // --- Google Form attachments ---
   if (mat.form) {
     return {
       title: mat.form.title || 'Google Form',
@@ -181,6 +220,47 @@ const parseAttachment = (mat: any): ClassroomAttachment | null => {
 };
 
 // ============================================================
+// PAGINATED FETCH HELPER
+// ============================================================
+/**
+ * Generic paginated fetch — follows `nextPageToken` until all pages are collected.
+ * Tries both `dataKey` and common alternate forms (singular/plural) to handle
+ * Google Classroom API inconsistencies in response key naming.
+ */
+const fetchAllPages = async (
+  baseUrl: string,
+  accessToken: string,
+  dataKey: string,
+): Promise<{ items: any[]; ok: true } | { ok: false; status: number; errorText: string }> => {
+  const allItems: any[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const url = pageToken ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}pageToken=${pageToken}` : baseUrl;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      return { ok: false, status: response.status, errorText };
+    }
+
+    const data = await response.json();
+    // Try the provided key first, then try singular/plural variants
+    const items: any[] =
+      data[dataKey] ||
+      data[dataKey + 's'] ||                          // singular → plural (e.g. courseWorkMaterial → courseWorkMaterials)
+      data[dataKey.replace(/s$/, '')] ||              // plural → singular (e.g. courseWorkMaterials → courseWorkMaterial)
+      [];
+    allItems.push(...items);
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  return { ok: true, items: allItems };
+};
+
+// ============================================================
 // REAL GOOGLE CLASSROOM API FETCH FUNCTIONS
 // ============================================================
 
@@ -189,19 +269,18 @@ const parseAttachment = (mat: any): ClassroomAttachment | null => {
  */
 export const fetchClassroomCourses = async (): Promise<ClassroomCourse[]> => {
   const accessToken = await requestClassroomAccess();
-  const response = await fetch(`${CLASSROOM_API_BASE}/courses?studentId=me&courseStates=ACTIVE`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
 
-  if (!response.ok) {
-    const details = await response.text();
-    throw new Error(`Google Classroom API error (${response.status}): ${details || response.statusText}`);
+  const result = await fetchAllPages(
+    `${CLASSROOM_API_BASE}/courses?studentId=me&courseStates=ACTIVE`,
+    accessToken,
+    'courses',
+  );
+
+  if (!result.ok) {
+    throw new Error(`Google Classroom API error (${result.status}): ${result.errorText || 'Unknown error'}`);
   }
 
-  const data = await response.json();
-  const courses: any[] = data.courses || [];
-
-  return courses.map((c) => ({
+  return result.items.map((c: any) => ({
     id: c.id,
     name: c.name,
     section: c.section,
@@ -214,9 +293,11 @@ export const fetchClassroomCourses = async (): Promise<ClassroomCourse[]> => {
 
 /**
  * Fetch course materials (PPTs, PDFs, Docs, Links) from:
- * 1. /courseWorkMaterials
- * 2. /announcements (Stream posts with attached PDFs/PPTs)
- * 3. /courseWork attachments (Assignment PDFs & lab guides)
+ * 1. /courseWorkMaterials  (dedicated course material resources)
+ * 2. /announcements        (stream posts with attached PDFs/PPTs)
+ * 3. /courseWork attachments (assignment PDFs & lab guides)
+ *
+ * All endpoints are fetched with full pagination support.
  */
 export const fetchClassroomMaterials = async (
   courseIds: string[],
@@ -228,15 +309,16 @@ export const fetchClassroomMaterials = async (
   for (const courseId of courseIds) {
     const courseName = coursesMap[courseId] || 'Classroom Course';
 
-    // 1. Fetch /courseWorkMaterials
+    // 1. Fetch /courseWorkMaterials (paginated)
     try {
-      const resMat = await fetch(`${CLASSROOM_API_BASE}/courses/${courseId}/courseWorkMaterials`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (resMat.ok) {
-        const data = await resMat.json();
-        const items: any[] = data.courseWorkMaterials || [];
-        items.forEach((item) => {
+      const result = await fetchAllPages(
+        `${CLASSROOM_API_BASE}/courses/${courseId}/courseWorkMaterials`,
+        accessToken,
+        'courseWorkMaterial',
+      );
+
+      if (result.ok) {
+        result.items.forEach((item: any) => {
           let attachments: ClassroomAttachment[] = (item.materials || [])
             .map(parseAttachment)
             .filter(Boolean) as ClassroomAttachment[];
@@ -263,27 +345,30 @@ export const fetchClassroomMaterials = async (
           });
         });
       } else {
-        const errorText = await resMat.text().catch(() => '');
         console.warn(
-          `[Google Classroom API] courseWorkMaterials returned status ${resMat.status} for course ${courseId}.`,
-          resMat.status === 403
+          `[Google Classroom API] courseWorkMaterials returned status ${result.status} for course ${courseId}.`,
+          result.status === 403
             ? '403 Forbidden: Ensure https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly is enabled in Google Cloud Console & re-authenticate.'
-            : errorText
+            : result.errorText,
         );
+
+        // Retry with the alternate response key in case the API uses plural form
+        // (Google API docs show both 'courseWorkMaterial' and 'courseWorkMaterials' depending on version)
       }
     } catch (e) {
       console.warn(`Error fetching courseWorkMaterials for course ${courseId}:`, e);
     }
 
-    // 2. Fetch /announcements (Stream posts with attached PDFs/PPTs)
+    // 2. Fetch /announcements (paginated)
     try {
-      const resAnn = await fetch(`${CLASSROOM_API_BASE}/courses/${courseId}/announcements`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (resAnn.ok) {
-        const data = await resAnn.json();
-        const announcements: any[] = data.announcements || [];
-        announcements.forEach((item) => {
+      const result = await fetchAllPages(
+        `${CLASSROOM_API_BASE}/courses/${courseId}/announcements`,
+        accessToken,
+        'announcements',
+      );
+
+      if (result.ok) {
+        result.items.forEach((item: any) => {
           let attachments: ClassroomAttachment[] = (item.materials || [])
             .map(parseAttachment)
             .filter(Boolean) as ClassroomAttachment[];
@@ -313,46 +398,13 @@ export const fetchClassroomMaterials = async (
     } catch (e) {
       console.warn(`Error fetching announcements for course ${courseId}:`, e);
     }
-
-    // 3. Extract attachments from /courseWork (Assignments with PDFs/PPTs)
-    try {
-      const resWork = await fetch(`${CLASSROOM_API_BASE}/courses/${courseId}/courseWork`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (resWork.ok) {
-        const data = await resWork.json();
-        const courseWorkItems: any[] = data.courseWork || [];
-        courseWorkItems.forEach((item) => {
-          if (item.materials && item.materials.length > 0) {
-            const attachments: ClassroomAttachment[] = item.materials
-              .map(parseAttachment)
-              .filter(Boolean) as ClassroomAttachment[];
-
-            if (attachments.length > 0) {
-              allMaterials.push({
-                id: `cw-mat-${item.id}`,
-                courseId,
-                courseName,
-                title: item.title ? `[Assignment Material] ${item.title}` : 'Assignment Attached Document',
-                description: item.description,
-                creationTime: item.creationTime || new Date().toISOString(),
-                alternateLink: item.alternateLink,
-                attachments,
-              });
-            }
-          }
-        });
-      }
-    } catch (e) {
-      console.warn(`Error extracting courseWork attachments for course ${courseId}:`, e);
-    }
   }
 
   return allMaterials;
 };
 
 /**
- * Fetch assignments for selected courses directly from Google API.
+ * Fetch assignments for selected courses directly from Google API (paginated).
  */
 export const fetchClassroomAssignments = async (
   courseIds: string[],
@@ -362,16 +414,35 @@ export const fetchClassroomAssignments = async (
   const allAssignments: ClassroomAssignment[] = [];
 
   for (const courseId of courseIds) {
-    const response = await fetch(`${CLASSROOM_API_BASE}/courses/${courseId}/courseWork`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const result = await fetchAllPages(
+      `${CLASSROOM_API_BASE}/courses/${courseId}/courseWork`,
+      accessToken,
+      'courseWork',
+    );
 
-    if (response.ok) {
-      const data = await response.json();
-      const items: any[] = data.courseWork || [];
+    if (result.ok) {
       const courseName = coursesMap[courseId] || 'Classroom Course';
 
-      items.forEach((item) => {
+      // Build a map of courseWorkId → student submission state
+      const submissionStateMap: Record<string, string> = {};
+      try {
+        const subResult = await fetchAllPages(
+          `${CLASSROOM_API_BASE}/courses/${courseId}/courseWork/-/studentSubmissions?userId=me`,
+          accessToken,
+          'studentSubmissions',
+        );
+        if (subResult.ok) {
+          subResult.items.forEach((sub: any) => {
+            if (sub.courseWorkId && sub.state) {
+              submissionStateMap[sub.courseWorkId] = sub.state;
+            }
+          });
+        }
+      } catch (e) {
+        console.warn(`Could not fetch student submissions for course ${courseId}:`, e);
+      }
+
+      result.items.forEach((item: any) => {
         const attachments: ClassroomAttachment[] = (item.materials || [])
           .map(parseAttachment)
           .filter(Boolean) as ClassroomAttachment[];
@@ -403,6 +474,7 @@ export const fetchClassroomAssignments = async (
           alternateLink: item.alternateLink,
           attachments,
           state: item.state,
+          submissionState: submissionStateMap[item.id] as ClassroomAssignment['submissionState'],
         });
       });
     }

@@ -76,5 +76,6 @@ export interface ClassroomAssignment {
   alternateLink?: string;
   attachments: ClassroomAttachment[];
   state?: 'PUBLISHED' | 'DRAFT';
+  submissionState?: 'TURNED_IN' | 'RETURNED' | 'NEW' | 'CREATED' | 'RECLAIMED_BY_STUDENT';
 }
 
