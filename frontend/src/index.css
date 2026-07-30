@@ -103,23 +103,38 @@
   border: 1px solid #3d3d3d;
 }
 
-/* Custom Calendar heat map overrides */
+/* Custom Calendar heat map overrides - Github Green Theme */
+.react-calendar-heatmap rect {
+  rx: 2px;
+  ry: 2px;
+}
+
+/* Force standard grid margins and alignment */
+.react-calendar-heatmap .react-calendar-heatmap-month-labels,
+.react-calendar-heatmap .react-calendar-heatmap-weekday-labels {
+  fill: #8b949e;
+  font-size: 9px;
+}
+
+
 .react-calendar-heatmap .color-empty {
-  fill: #2d2d2d;
+  fill: #161b22 !important; /* Github dark empty background color */
 }
 
 .react-calendar-heatmap .color-scale-1 {
-  fill: #423d2b;
+  fill: #0e4429 !important;
 }
 
 .react-calendar-heatmap .color-scale-2 {
-  fill: #736235;
+  fill: #006d32 !important;
 }
 
 .react-calendar-heatmap .color-scale-3 {
-  fill: #b39547;
+  fill: #26a641 !important;
 }
 
 .react-calendar-heatmap .color-scale-4 {
-  fill: #fbbf24;
+  fill: #39d353 !important;
 }
+
+
