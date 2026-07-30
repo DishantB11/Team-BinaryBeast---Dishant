@@ -34,3 +34,47 @@ export interface RescheduleResponse {
   tasks: Task[];
   reasoning: string;
 }
+
+export interface ClassroomCourse {
+  id: string;
+  name: string;
+  section?: string;
+  descriptionHeading?: string;
+  room?: string;
+  courseGroupEmail?: string;
+  alternateLink?: string;
+  isSelected?: boolean;
+}
+
+export interface ClassroomAttachment {
+  title: string;
+  url: string;
+  type: 'pdf' | 'ppt' | 'doc' | 'drive' | 'link' | 'video';
+  thumbnailUrl?: string;
+}
+
+export interface ClassroomMaterial {
+  id: string;
+  courseId: string;
+  courseName: string;
+  title: string;
+  description?: string;
+  creationTime: string;
+  alternateLink?: string;
+  attachments: ClassroomAttachment[];
+}
+
+export interface ClassroomAssignment {
+  id: string;
+  courseId: string;
+  courseName: string;
+  title: string;
+  description?: string;
+  dueDate?: string;
+  dueTime?: string;
+  maxPoints?: number;
+  alternateLink?: string;
+  attachments: ClassroomAttachment[];
+  state?: 'PUBLISHED' | 'DRAFT';
+}
+
