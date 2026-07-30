@@ -29,8 +29,6 @@ Google Classroom, Calendar, OCR, notifications, and vector storage are all exter
 
 ## Deferred to Phase 2+
 
-- SQLAlchemy models
-- Alembic migrations
 - JWT and Google OAuth flows
 - LangGraph implementation
 - Chroma integration
