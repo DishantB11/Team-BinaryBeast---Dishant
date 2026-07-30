@@ -1,0 +1,14 @@
+
+MAT1003: Applied Linear Algebra
+Course Code: MAT1003
+
+Module 1: Matrix Theory & Linear Systems
+- Vector Spaces and Subspaces
+- Linear Independence and Basis
+
+Module 2: Eigenvalues & Inner Product Spaces
+- Characteristic Equations and Diagonalization
+
+Reference Books & Authors:
+1. Peter V. O' Neil, Advanced Engineering Mathematics, 7th Edition, Cengage Learning, 2012.
+2. Erwin Kreyszig, Advanced Engineering Mathematics, 10th Edition, John Wiley & Sons, 2011.

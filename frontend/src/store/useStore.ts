@@ -164,26 +164,13 @@ export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
       // --- Initial State ---
-      tasks: generateMockTasks(),
-      subjects: [
-        { name: 'Data Structures', totalModules: 3, totalPages: 120, estimatedHours: 15, progress: 30 },
-        { name: 'Algorithms', totalModules: 4, totalPages: 180, estimatedHours: 22, progress: 20 },
-        { name: 'Operating Systems', totalModules: 3, totalPages: 100, estimatedHours: 12, progress: 40 },
-        { name: 'Math', totalModules: 2, totalPages: 80, estimatedHours: 10, progress: 60 },
-      ],
+      tasks: [],
+      subjects: [],
       preferences: defaultPreferences,
       isLoading: false,
       error: null,
       selectedTaskId: null,
-      heatmapData: [
-        { date: '2026-07-20', count: 3 },
-        { date: '2026-07-21', count: 5 },
-        { date: '2026-07-22', count: 2 },
-        { date: '2026-07-23', count: 7 },
-        { date: '2026-07-24', count: 4 },
-        { date: '2026-07-25', count: 6 },
-        { date: '2026-07-26', count: 1 },
-      ],
+      heatmapData: [],
 
       // Pomodoro Initial State
       pomodoroSeconds: 25 * 60,
@@ -191,7 +178,18 @@ export const useStore = create<AppState>()(
       activePomodoroTaskId: null,
 
       // --- Actions ---
-      setTasks: (tasks) => set({ tasks }),
+      setTasks: (tasks) =>
+        set((state) => {
+          // Deduplicate tasks by task title & subject combination
+          const seen = new Set<string>();
+          const unique = tasks.filter((t) => {
+            const key = `${t.subject.toLowerCase()}:${t.title.toLowerCase()}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          return { tasks: unique };
+        }),
       
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
       
@@ -240,7 +238,7 @@ export const useStore = create<AppState>()(
       
       clearAll: () =>
         set({
-          tasks: generateMockTasks(),
+          tasks: [],
           subjects: [],
           preferences: defaultPreferences,
           error: null,

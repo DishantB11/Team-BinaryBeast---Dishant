@@ -25,9 +25,12 @@ export const TasksFocusView: React.FC = () => {
     try {
       const response = await uploadPDF(fd);
       
-      // Update app state tasks + subjects list
-      setTasks([...tasks, ...response.tasks]);
-      setSubjects([...subjects, ...response.subjects]);
+      // Merge newly extracted subject tasks with existing workspace tasks (preserves other subjects)
+      const newSubjectName = response.subjects[0]?.name;
+      const existingOtherSubjectTasks = tasks.filter((t) => t.subject !== newSubjectName);
+      
+      setTasks([...existingOtherSubjectTasks, ...response.tasks]);
+      setSubjects([...subjects.filter((s) => s.name !== newSubjectName), ...response.subjects]);
       setParseLog(
         `Syllabus extraction complete! Registered ${response.subjects.length} new subject and calculated scheduling timeline metrics.`
       );

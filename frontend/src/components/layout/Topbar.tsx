@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Search } from 'lucide-react';
+import { useStore } from '../../store/useStore';
 
 const quotes = [
   "Stay consistent, you've got this!",
@@ -21,12 +22,21 @@ export const Topbar: React.FC = () => {
 
   return (
     <header className="fixed top-0 left-[260px] right-0 h-[60px] bg-[#1e1e1e] border-b border-[#3d3d3d] flex items-center justify-between px-6 z-10">
-      {/* Sparkle quote */}
-      <div className="flex items-center gap-2 w-1/3 min-w-0">
-        <Sparkles className="w-4 h-4 text-[#fbbf24] shrink-0" />
-        <span className="text-[#a0a0a0] text-sm italic truncate">
-          "{quote}"
-        </span>
+      <div className="flex items-center gap-4 w-1/3 min-w-0">
+        <button
+          onClick={() => useStore.getState().clearAll()}
+          className="px-3 py-1 bg-[#3d3d3d] hover:bg-red-900/40 hover:text-red-400 text-xs text-[#a0a0a0] rounded-md transition-all border border-[#4d4d4d]"
+          title="Reset cached tasks and calendar"
+        >
+          Clear Workspace
+        </button>
+
+        <div className="flex items-center gap-2 max-w-[60%]">
+          <Sparkles className="w-4 h-4 text-[#fbbf24] shrink-0" />
+          <span className="text-[#a0a0a0] text-sm italic truncate">
+            "{quote}"
+          </span>
+        </div>
       </div>
 
       {/* Notion Search Bar Centered */}
