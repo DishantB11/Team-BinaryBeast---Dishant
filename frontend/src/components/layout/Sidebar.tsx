@@ -5,7 +5,8 @@ import {
   ListTodo, 
   GraduationCap, 
   Activity,
-  Sparkles
+  Sparkles,
+  Target
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -18,6 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) =
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
     { id: 'planner', label: 'Planner', icon: ListTodo },
+    { id: 'focus', label: 'Focus Hub', icon: Target },
     { id: 'classroom', label: 'Classroom', icon: GraduationCap },
     { id: 'heatmap', label: 'Heatmap', icon: Activity },
   ];
