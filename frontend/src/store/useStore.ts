@@ -182,8 +182,11 @@ export const useStore = create<AppState>()(
         set((state) => {
           // Deduplicate tasks by task title & subject combination
           const seen = new Set<string>();
-          const unique = tasks.filter((t) => {
-            const key = `${t.subject.toLowerCase()}:${t.title.toLowerCase()}`;
+          const unique = (tasks || []).filter((t) => {
+            if (!t) return false;
+            const subj = (t.subject || 'General').toLowerCase();
+            const title = (t.title || 'Untitled').toLowerCase();
+            const key = `${subj}:${title}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;

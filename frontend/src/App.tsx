@@ -35,8 +35,8 @@ function App() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#1e1e1e] text-white flex">
-        {/* Notion Sidebar Layout */}
+      <div className="min-h-screen bg-[#121212] text-[#e4e2e0] flex">
+        {/* Academic Pro Sidebar */}
         <Sidebar activeView={activeView} setActiveView={setActiveView} />
 
         {/* Main Workspace Frame */}
@@ -45,7 +45,7 @@ function App() {
           <Topbar />
 
           {/* Inner Content scroll layout */}
-          <main className="flex-1 mt-[60px] p-8 overflow-y-auto max-w-[1200px] w-full mx-auto pb-20">
+          <main className="flex-1 mt-[60px] p-8 overflow-y-auto max-w-[1280px] w-full mx-auto pb-20">
             {renderActiveView()}
           </main>
         </div>

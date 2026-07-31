@@ -1,15 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipForward, Music, Move } from 'lucide-react';
 
 const tracks = [
-  {
-    title: 'Brown noise',
-    src: '/cosmic-scapes-soft-brown-noise-compressed.mp3',
-  },
-  {
-    title: 'Lofi Beats',
-    src: '/mondamusic-lofi-lofi-girl-542555.mp3',
-  },
+  { title: 'Brown noise',  src: '/cosmic-scapes-soft-brown-noise-compressed.mp3' },
+  { title: 'Lofi Beats',   src: '/mondamusic-lofi-lofi-girl-542555.mp3' },
 ];
 
 export const AudioPlayer: React.FC = () => {
@@ -17,7 +10,6 @@ export const AudioPlayer: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Position coordinates state (offset from bottom right)
   const [position, setPosition] = useState({ x: 20, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
@@ -27,12 +19,8 @@ export const AudioPlayer: React.FC = () => {
   useEffect(() => {
     audioRef.current = new Audio(currentTrack.src);
     audioRef.current.loop = true;
-
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     };
   }, []);
 
@@ -42,22 +30,14 @@ export const AudioPlayer: React.FC = () => {
     audioRef.current.pause();
     audioRef.current.src = currentTrack.src;
     audioRef.current.loop = true;
-
-    if (wasPlaying) {
-      audioRef.current.play().catch(() => {});
-    }
+    if (wasPlaying) audioRef.current.play().catch(() => {});
   }, [trackIndex]);
 
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play().catch(() => {});
-      setIsPlaying(true);
-    }
+    if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); }
+    else { audioRef.current.play().catch(() => {}); setIsPlaying(true); }
   };
 
   const handleSkip = (e: React.MouseEvent) => {
@@ -65,37 +45,23 @@ export const AudioPlayer: React.FC = () => {
     setTrackIndex((prev) => (prev + 1) % tracks.length);
   };
 
-  // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
-    dragStart.current = {
-      x: e.clientX + position.x,
-      y: e.clientY + position.y,
-    };
+    dragStart.current = { x: e.clientX + position.x, y: e.clientY + position.y };
   };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      let newX = dragStart.current.x - e.clientX;
-      let newY = dragStart.current.y - e.clientY;
-
-      // Keep within bounds
-      newX = Math.max(10, Math.min(newX, window.innerWidth - 270));
-      newY = Math.max(10, Math.min(newY, window.innerHeight - 80));
-
+      let newX = Math.max(10, Math.min(dragStart.current.x - e.clientX, window.innerWidth - 270));
+      let newY = Math.max(10, Math.min(dragStart.current.y - e.clientY, window.innerHeight - 80));
       setPosition({ x: newX, y: newY });
     };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
+    const handleMouseUp = () => setIsDragging(false);
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
     }
-
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
@@ -110,65 +76,47 @@ export const AudioPlayer: React.FC = () => {
         right: `${position.x}px`,
         zIndex: 999999,
         width: '260px',
-        backgroundColor: '#2d2d2d',
-        border: '1px solid #3d3d3d',
-        borderRadius: '12px',
+        backgroundColor: '#131412',
+        border: '1px solid #2a2a2a',
+        borderRadius: '4px',
         padding: '10px 12px',
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.7)',
         cursor: isDragging ? 'grabbing' : 'grab',
         userSelect: 'none',
       }}
       onMouseDown={handleMouseDown}
     >
-      {/* Drag Indicator / Icon */}
+      {/* Music icon */}
       <div
         style={{
           width: '28px',
           height: '28px',
-          borderRadius: '6px',
-          backgroundColor: '#3d3d3d',
+          borderRadius: '4px',
+          backgroundColor: '#2a2a2a',
+          border: '1px solid #333333',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
         }}
       >
-        <Music
-          size={15}
-          color="#fbbf24"
-          style={isPlaying ? { animation: 'pulse 1.5s infinite' } : {}}
-        />
+        <span
+          className="material-symbols-outlined"
+          style={{ fontSize: '15px', color: '#8ea091', fontVariationSettings: isPlaying ? "'FILL' 1" : "'FILL' 0" }}
+        >
+          music_note
+        </span>
       </div>
 
-      {/* Track Details */}
+      {/* Track info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', items: 'center', gap: '4px' }}>
-          <p
-            style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: '#ffffff',
-              margin: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {currentTrack.title}
-          </p>
-        </div>
-        <p
-          style={{
-            fontSize: '10px',
-            color: '#6b6b6b',
-            margin: '1px 0 0 0',
-          }}
-        >
-          Ambient Player
+        <p style={{ fontSize: '12px', fontWeight: 600, color: '#e4e2e0', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {currentTrack.title}
         </p>
+        <p style={{ fontSize: '10px', color: '#6b6b6b', margin: '1px 0 0 0' }}>Ambient Player</p>
       </div>
 
       {/* Controls */}
@@ -182,9 +130,8 @@ export const AudioPlayer: React.FC = () => {
             width: '28px',
             height: '28px',
             borderRadius: '50%',
-            backgroundColor: '#3d3d3d',
-            border: '1px solid #4d4d4d',
-            color: '#ffffff',
+            backgroundColor: isPlaying ? '#8ea091' : '#2a2a2a',
+            border: isPlaying ? 'none' : '1px solid #333333',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -193,11 +140,12 @@ export const AudioPlayer: React.FC = () => {
           }}
           title={isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? (
-            <Pause size={13} color="#fbbf24" fill="#fbbf24" />
-          ) : (
-            <Play size={13} color="#ffffff" fill="#ffffff" />
-          )}
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: '14px', color: isPlaying ? '#121212' : '#e4e2e0', fontVariationSettings: "'FILL' 1" }}
+          >
+            {isPlaying ? 'pause' : 'play_arrow'}
+          </span>
         </button>
         <button
           onClick={handleSkip}
@@ -205,8 +153,8 @@ export const AudioPlayer: React.FC = () => {
             width: '28px',
             height: '28px',
             borderRadius: '50%',
-            backgroundColor: '#2d2d2d',
-            border: '1px solid #3d3d3d',
+            backgroundColor: '#2a2a2a',
+            border: '1px solid #333333',
             color: '#a0a0a0',
             display: 'flex',
             alignItems: 'center',
@@ -216,11 +164,14 @@ export const AudioPlayer: React.FC = () => {
           }}
           title="Next Track"
         >
-          <SkipForward size={13} />
+          <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>skip_next</span>
         </button>
       </div>
 
-      <Move size={12} color="#6b6b6b" style={{ flexShrink: 0, opacity: 0.6 }} />
+      {/* Drag handle */}
+      <span className="material-symbols-outlined" style={{ fontSize: '12px', color: '#6b6b6b', flexShrink: 0, opacity: 0.6 }}>
+        drag_indicator
+      </span>
     </div>
   );
 };
