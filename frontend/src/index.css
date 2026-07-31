@@ -3,44 +3,50 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    background-color: #121212;
+  }
+
   body {
-    background-color: #1e1e1e;
-    color: #ffffff;
+    background-color: #121212;
+    color: #e4e2e0;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Material Symbols size normalization */
+  .material-symbols-outlined {
+    font-size: 20px;
+    line-height: 1;
+    user-select: none;
+  }
+  .material-symbols-outlined.icon-sm { font-size: 16px; }
+  .material-symbols-outlined.icon-lg { font-size: 24px; }
+  .material-symbols-outlined.icon-xl { font-size: 28px; }
+  .material-symbols-outlined.filled {
+    font-variation-settings: 'FILL' 1;
   }
 }
 
-/* Custom Notion-like Scrollbars */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+/* ── Scrollbars ─────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: #121212; }
+::-webkit-scrollbar-thumb  { background: #2a2a2a; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #333333; }
 
-::-webkit-scrollbar-track {
-  background: #1e1e1e;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #3d3d3d;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #4d4d4d;
-}
-
-/* FullCalendar Dark Theme Overrides */
+/* ── FullCalendar Dark Theme ────────────────────────── */
 .fc {
-  --fc-border-color: #3d3d3d;
-  --fc-daygrid-event-dot-color: #fbbf24;
-  --fc-today-bg-color: rgba(251, 191, 36, 0.08);
-  color: #ffffff;
+  --fc-border-color: #2a2a2a;
+  --fc-daygrid-event-dot-color: #8ea091;
+  --fc-today-bg-color: rgba(142, 160, 145, 0.08);
+  color: #e4e2e0;
   font-family: inherit;
 }
 
-.fc .fc-theme-standard td, 
+.fc .fc-theme-standard td,
 .fc .fc-theme-standard th {
-  border: 1px solid #3d3d3d;
+  border: 1px solid #2a2a2a;
 }
 
 .fc .fc-col-header-cell-cushion {
@@ -61,28 +67,28 @@
 }
 
 .fc .fc-button {
-  background-color: #2d2d2d;
-  border: 1px solid #3d3d3d;
-  color: #ffffff;
+  background-color: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  color: #e4e2e0;
   font-weight: 500;
   font-size: 0.875rem;
   text-transform: capitalize;
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 6px 12px;
   transition: all 0.2s ease;
 }
 
 .fc .fc-button:hover {
-  background-color: #3d3d3d;
-  border-color: #4d4d4d;
-  color: #ffffff;
+  background-color: #2a2a2a;
+  border-color: #333;
+  color: #e4e2e0;
 }
 
-.fc .fc-button-primary:not(:disabled):active, 
+.fc .fc-button-primary:not(:disabled):active,
 .fc .fc-button-primary:not(:disabled).fc-button-active {
-  background-color: #3d3d3d;
-  border-color: #fbbf24;
-  color: #fbbf24;
+  background-color: #2a2a2a;
+  border-color: #8ea091;
+  color: #8ea091;
 }
 
 .fc .fc-button-primary:focus {
@@ -91,50 +97,29 @@
 
 .fc-event {
   cursor: grab;
-  border-radius: 4px !important;
+  border-radius: 4px;
+  padding: 2px 4px;
   font-size: 0.75rem;
   border: none;
   font-weight: 500;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
 }
 
 .fc-h-event {
-  background-color: #2d2d2d;
-  border: 1px solid #3d3d3d;
+  background-color: #2a2a2a;
+  border: 1px solid #333;
 }
 
-/* Custom Calendar heat map overrides - Github Green Theme */
-.react-calendar-heatmap rect {
-  rx: 2px;
-  ry: 2px;
-}
+/* ── Heatmap (GitHub green) ─────────────────────────── */
+.react-calendar-heatmap rect { rx: 2px; ry: 2px; }
 
-/* Force standard grid margins and alignment */
 .react-calendar-heatmap .react-calendar-heatmap-month-labels,
 .react-calendar-heatmap .react-calendar-heatmap-weekday-labels {
   fill: #8b949e;
   font-size: 9px;
 }
 
-
-.react-calendar-heatmap .color-empty {
-  fill: #161b22 !important; /* Github dark empty background color */
-}
-
-.react-calendar-heatmap .color-scale-1 {
-  fill: #0e4429 !important;
-}
-
-.react-calendar-heatmap .color-scale-2 {
-  fill: #006d32 !important;
-}
-
-.react-calendar-heatmap .color-scale-3 {
-  fill: #26a641 !important;
-}
-
-.react-calendar-heatmap .color-scale-4 {
-  fill: #39d353 !important;
-}
-
-
+.react-calendar-heatmap .color-empty  { fill: #161b22 !important; }
+.react-calendar-heatmap .color-scale-1 { fill: #0e4429 !important; }
+.react-calendar-heatmap .color-scale-2 { fill: #006d32 !important; }
+.react-calendar-heatmap .color-scale-3 { fill: #26a641 !important; }
+.react-calendar-heatmap .color-scale-4 { fill: #39d353 !important; }

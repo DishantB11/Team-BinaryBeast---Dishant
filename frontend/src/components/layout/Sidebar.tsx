@@ -1,68 +1,75 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Calendar as CalendarIcon, 
-  ListTodo, 
-  GraduationCap, 
-  Activity,
-  Sparkles,
-  Target
-} from 'lucide-react';
 
 interface SidebarProps {
   activeView: string;
   setActiveView: (view: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
-  const items = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
-    { id: 'planner', label: 'Planner', icon: ListTodo },
-    { id: 'focus', label: 'Focus Hub', icon: Target },
-    { id: 'classroom', label: 'Classroom', icon: GraduationCap },
-    { id: 'heatmap', label: 'Heatmap', icon: Activity },
-  ];
+const navItems = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { id: 'calendar', label: 'Calendar', icon: 'calendar_month' },
+  { id: 'planner', label: 'Planner', icon: 'event_note' },
+  { id: 'focus', label: 'Focus Hub', icon: 'center_focus_strong' },
+  { id: 'classroom', label: 'Classroom', icon: 'school' },
+  { id: 'heatmap', label: 'Heatmap', icon: 'insights' },
+];
 
+export const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
   return (
-    <aside className="fixed top-0 left-0 w-[260px] h-screen bg-[#2d2d2d] border-r border-[#3d3d3d] flex flex-col z-20">
+    <aside className="fixed top-0 left-0 w-[260px] h-screen bg-[#131412] border-r border-[#2a2a2a] flex flex-col z-20 font-body">
+
       {/* Brand Header */}
-      <div className="h-[60px] border-b border-[#3d3d3d] flex items-center px-6 gap-3">
-        <Sparkles className="w-5 h-5 text-[#fbbf24] fill-[#fbbf24] animate-pulse" />
-        <span className="font-bold text-lg tracking-tight text-white">StudyAgent</span>
+      <div className="px-6 py-5 border-b border-[#2a2a2a]">
+        <h1 className="font-headline font-bold text-xl tracking-tight text-[#b9cbbb]">
+          Study Agent
+        </h1>
       </div>
 
-      {/* Navigation List */}
-      <nav className="flex-1 py-4 px-3 space-y-1">
-        {items.map((item) => {
-          const Icon = item.icon;
+      {/* Navigation */}
+      <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
+        {navItems.map((item) => {
           const isActive = activeView === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setActiveView(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-all group relative ${
-                isActive 
-                  ? 'bg-[#3d3d3d] text-[#fbbf24]' 
-                  : 'text-[#a0a0a0] hover:bg-[#3d3d3d] hover:text-white'
-              }`}
+              className={`w-full flex items-center gap-6 px-4 py-2.5 rounded-sm text-sm font-medium transition-all duration-200 group ${isActive
+                  ? 'bg-[#8ea091] text-[#121212]'
+                  : 'text-[#c8c6c5] hover:bg-[#1f201f] hover:text-[#e4e2e0]'
+                }`}
             >
-              <div className="flex items-center gap-3">
-                <Icon className={`w-4 h-4 transition-transform group-hover:scale-105 ${isActive ? 'text-[#fbbf24]' : 'text-[#6b6b6b] group-hover:text-[#a0a0a0]'}`} />
-                <span>{item.label}</span>
-              </div>
-              {isActive && (
-                <div className="absolute right-0 top-1/4 bottom-1/4 w-1 bg-[#fbbf24] rounded-l" />
-              )}
+              <span
+                className={`material-symbols-outlined icon-sm transition-all ${isActive ? 'filled' : ''
+                  }`}
+                style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
+              >
+                {item.icon}
+              </span>
+              <span className="font-body">{item.label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* Footer Info */}
-      <div className="p-4 border-t border-[#3d3d3d] text-center">
-        <div className="text-[11px] text-[#6b6b6b]">HackWithIndia 2026</div>
-        <div className="text-[10px] text-[#a0a0a0] font-semibold mt-1">Track 2 — Problem 1</div>
+      {/* Bottom: Settings + User */}
+      <div className="mt-auto border-t border-[#2a2a2a] px-3 pt-3 pb-4 space-y-0.5">
+        <button className="w-full flex items-center gap-6 px-4 py-2.5 rounded-sm text-sm text-[#c8c6c5] hover:bg-[#1f201f] hover:text-[#e4e2e0] transition-colors duration-200 group">
+          <span className="material-symbols-outlined icon-sm">settings</span>
+          <span className="font-body">Settings</span>
+        </button>
+
+        {/* User pill */}
+        <div className="flex items-center gap-3 px-4 py-2.5 mt-1">
+          <div className="w-8 h-8 rounded-full bg-[#8ea091] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined icon-sm text-[#121212] filled" style={{ fontVariationSettings: "'FILL' 1" }}>
+              person
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-[#e4e2e0] leading-tight">Alex Mercer</span>
+            <span className="text-[10px] text-[#a0a0a0]">Student</span>
+          </div>
+        </div>
       </div>
     </aside>
   );

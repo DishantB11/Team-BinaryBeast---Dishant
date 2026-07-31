@@ -6,7 +6,6 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { useStore } from '../../store/useStore';
 import { rescheduleTask } from '../../api/client';
 import { createGoogleCalendarEvents, fetchGoogleCalendarEvents } from '../../api/googleCalendar';
-import { Sparkles, RefreshCw, Calendar as CalendarIcon } from 'lucide-react';
 
 export const CalendarView: React.FC = () => {
   const { tasks, setTasks } = useStore();
@@ -28,9 +27,9 @@ export const CalendarView: React.FC = () => {
     title: `[${task.subject}] ${task.title}`,
     start: task.dueDate,
     allDay: true,
-    backgroundColor: task.priority === 1 ? '#fbbf24' : '#2d2d2d',
-    borderColor: task.priority === 1 ? '#fbbf24' : '#3d3d3d',
-    textColor: task.priority === 1 ? '#000000' : '#ffffff',
+    backgroundColor: task.priority === 1 ? '#8ea091' : '#2a2a2a',
+    borderColor:     task.priority === 1 ? '#8ea091' : '#333333',
+    textColor:       task.priority === 1 ? '#121212' : '#e4e2e0',
     extendedProps: { ...task },
   }));
 
@@ -75,35 +74,26 @@ export const CalendarView: React.FC = () => {
     );
   };
 
-  // Sync tasks directly to/from user's Google Calendar via OAuth 2.0
+  // Sync to/from Google Calendar
   const handleSyncGoogleCalendar = async () => {
     setIsSyncingGoogle(true);
     setReplanningLog('Connecting to Google Calendar & fetching remote events...');
 
     try {
-      // 1. Fetch remote events from Google Calendar
       const remoteTasks = await fetchGoogleCalendarEvents();
-      
-      // Merge remote events into existing tasks store avoiding duplicates
       const existingTaskTitles = new Set(tasks.map((t) => `${t.dueDate}:${t.title.toLowerCase()}`));
       const newImportedTasks = remoteTasks.filter(
         (rt) => !existingTaskTitles.has(`${rt.dueDate}:${rt.title.toLowerCase()}`) && !tasks.some((t) => t.id === rt.id)
       );
-
       const mergedTasks = [...tasks, ...newImportedTasks];
-
-      // 2. Export unsynced local study sessions to Google Calendar
       const localTasksToExport = tasks.filter((t) => !t.id.startsWith('gcal-'));
       let exportedCount = 0;
       if (localTasksToExport.length > 0) {
         const synced = await createGoogleCalendarEvents(localTasksToExport);
         exportedCount = synced.length;
       }
-
       setTasks(mergedTasks);
-      setReplanningLog(
-        `✅ Bidirectional Sync Complete! Imported ${newImportedTasks.length} Google Calendar event(s) into your planner & exported ${exportedCount} study session(s) to Google Calendar.`
-      );
+      setReplanningLog(`✅ Bidirectional Sync Complete! Imported ${newImportedTasks.length} Google Calendar event(s) & exported ${exportedCount} study session(s).`);
     } catch (error: any) {
       console.error('Google Calendar sync error:', error);
       setReplanningLog(`⚠️ Google Calendar sync: ${error.message || 'Permission requested or failed.'}`);
@@ -113,71 +103,85 @@ export const CalendarView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 font-body">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Interactive Calendar</h1>
-          <p className="text-sm text-[#a0a0a0]">Drag and drop scheduled sessions. AI conflicts resolve automatically.</p>
+          <h2 className="font-headline font-bold text-[40px] leading-tight tracking-tight text-[#e4e2e0]">
+            Interactive Calendar
+          </h2>
+          <p className="text-[#a0a0a0] mt-1 text-base">
+            Drag and drop scheduled sessions. Conflicts resolve automatically.
+          </p>
         </div>
 
         <button
           onClick={handleSyncGoogleCalendar}
           disabled={isSyncingGoogle}
-          className="flex items-center gap-2 bg-[#2d2d2d] border border-[#3d3d3d] hover:border-[#fbbf24] text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm shrink-0 disabled:opacity-50 cursor-pointer"
+          className="flex items-center gap-2 bg-[#1e1e1e] border border-[#2a2a2a] hover:border-[#8ea091] text-[#e4e2e0] px-4 py-2 rounded-sm text-sm font-medium transition-all shrink-0 disabled:opacity-50 cursor-pointer mt-2"
         >
-          <CalendarIcon className={`w-4 h-4 text-[#fbbf24] ${isSyncingGoogle ? 'animate-spin' : ''}`} />
+          <span
+            className={`material-symbols-outlined icon-sm text-[#8ea091] ${isSyncingGoogle ? 'animate-spin' : ''}`}
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          >
+            {isSyncingGoogle ? 'sync' : 'calendar_month'}
+          </span>
           <span>{isSyncingGoogle ? 'Syncing...' : 'Sync to Google Calendar'}</span>
         </button>
       </div>
 
-      {/* AI Reasoner panel - Clean Minimal Metadata Grid */}
+      {/* Reasoning panel */}
       {replanningLog && (
-        <div className="bg-[#1e1e1e] border border-[#3d3d3d] rounded-lg p-4 transition-all duration-200 animate-fadeIn">
-          <div className="flex items-center gap-2 mb-3 border-b border-[#2d2d2d] pb-2">
-            <Sparkles className="w-4 h-4 text-[#fbbf24] shrink-0" />
-            <span className="text-xs font-semibold text-[#fbbf24] tracking-wider uppercase">AI Reasoning Engine</span>
+        <div className="bg-[#1e1e1e] border border-[#2a2a2a] rounded-sm p-4 transition-all duration-200">
+          <div className="flex items-center gap-2 mb-3 border-b border-[#2a2a2a] pb-2">
+            <span className="material-symbols-outlined icon-sm text-[#8ea091] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+              smart_toy
+            </span>
+            <span className="text-[10px] font-semibold text-[#8ea091] tracking-widest uppercase font-label">
+              Reasoning Engine
+            </span>
           </div>
 
           {parsedTaskInfo ? (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
-              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d]">
-                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Subject</div>
-                <div className="font-bold text-white truncate mt-0.5">{parsedTaskInfo.subject}</div>
+              <div className="bg-[#2a2a2a] p-2.5 rounded-sm border border-[#333333]">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold font-label">Subject</div>
+                <div className="font-bold text-[#e4e2e0] truncate mt-0.5">{parsedTaskInfo.subject}</div>
               </div>
-              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d] col-span-2 md:col-span-1">
-                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Topic</div>
-                <div className="font-bold text-white truncate mt-0.5" title={parsedTaskInfo.topic}>{parsedTaskInfo.topic}</div>
+              <div className="bg-[#2a2a2a] p-2.5 rounded-sm border border-[#333333] col-span-2 md:col-span-1">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold font-label">Topic</div>
+                <div className="font-bold text-[#e4e2e0] truncate mt-0.5" title={parsedTaskInfo.topic}>{parsedTaskInfo.topic}</div>
               </div>
-              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d]">
-                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Priority</div>
-                <div className="font-bold text-[#fbbf24] mt-0.5">{parsedTaskInfo.priority}</div>
+              <div className="bg-[#2a2a2a] p-2.5 rounded-sm border border-[#333333]">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold font-label">Priority</div>
+                <div className="font-bold text-[#8ea091] mt-0.5">{parsedTaskInfo.priority}</div>
               </div>
-              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d]">
-                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Due Date</div>
-                <div className="font-bold text-white mt-0.5">{parsedTaskInfo.dueDate}</div>
+              <div className="bg-[#2a2a2a] p-2.5 rounded-sm border border-[#333333]">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold font-label">Due Date</div>
+                <div className="font-bold text-[#e4e2e0] mt-0.5">{parsedTaskInfo.dueDate}</div>
               </div>
-              <div className="bg-[#2d2d2d] p-2.5 rounded border border-[#3d3d3d]">
-                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold">Estimated Time</div>
-                <div className="font-bold text-white mt-0.5">{parsedTaskInfo.estTime}</div>
+              <div className="bg-[#2a2a2a] p-2.5 rounded-sm border border-[#333333]">
+                <div className="text-[10px] text-[#a0a0a0] uppercase font-semibold font-label">Estimated Time</div>
+                <div className="font-bold text-[#e4e2e0] mt-0.5">{parsedTaskInfo.estTime}</div>
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-300 leading-relaxed font-mono">{replanningLog}</p>
+            <p className="text-sm text-[#c8c6c5] leading-relaxed font-mono">{replanningLog}</p>
           )}
         </div>
       )}
 
       {/* Calendar Wrap */}
-      <div className="bg-[#2d2d2d] border border-[#3d3d3d] rounded-lg p-6 relative">
+      <div className="bg-[#1e1e1e] border border-[#2a2a2a] rounded-sm p-6 relative">
         {isUpdating && (
-          <div className="absolute inset-0 bg-[#1e1e1e]/60 rounded-lg flex items-center justify-center z-50">
-            <div className="flex items-center gap-3 bg-[#2d2d2d] border border-[#3d3d3d] px-4 py-2.5 rounded-lg text-sm text-white">
-              <RefreshCw className="w-4 h-4 text-[#fbbf24] animate-spin" />
+          <div className="absolute inset-0 bg-[#121212]/70 rounded-sm flex items-center justify-center z-50">
+            <div className="flex items-center gap-3 bg-[#1e1e1e] border border-[#2a2a2a] px-4 py-2.5 rounded-sm text-sm text-[#e4e2e0]">
+              <span className="material-symbols-outlined icon-sm text-[#8ea091] animate-spin">sync</span>
               <span>Recalculating conflict-free timeline...</span>
             </div>
           </div>
         )}
-        
+
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -186,26 +190,6 @@ export const CalendarView: React.FC = () => {
           droppable={true}
           eventDrop={handleEventDrop}
           eventClick={handleEventClick}
-          eventContent={(eventInfo) => {
-            const task = eventInfo.event.extendedProps;
-            const isHighPriority = task.priority === 1;
-
-            return (
-              <div
-                className="w-full h-[24px] px-2 flex items-center text-xs rounded border transition-all duration-200 ease-out cursor-pointer overflow-hidden transform hover:translate-y-1 hover:brightness-125 hover:shadow-md"
-                style={{
-                  backgroundColor: isHighPriority ? '#fbbf24' : '#2d2d2d',
-                  color: isHighPriority ? '#000000' : '#ffffff',
-                  borderColor: isHighPriority ? '#f59e0b' : '#4d4d4d',
-                }}
-                title={eventInfo.event.title}
-              >
-                <span className="truncate font-medium text-[11px] leading-none">
-                  {eventInfo.event.title}
-                </span>
-              </div>
-            );
-          }}
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
@@ -217,4 +201,3 @@ export const CalendarView: React.FC = () => {
     </div>
   );
 };
-
