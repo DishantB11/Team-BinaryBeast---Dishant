@@ -1,4 +1,4 @@
-#StudyPilot
+StudyPilot
 ---
 
 StudyPilot is an intelligent study planner and academic management platform. It uses AI to extract syllabus content from documents (PDFs, Images, Docx), generates customized study plans, and features an interactive frontend dashboard for seamless schedule tracking and productivity visualization.
